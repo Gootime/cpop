@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{%  block content %}
+<a href="../">Retour a la liste des articles</a>
+   <div>
+       <img src="../../{{oneArticle.thumbnail}}">
+       <p><h2>{{oneArticle.title}}</h2> par <i>{{oneArticle.author}}</i> le {{oneArticle.date}}</p>
+       <p>{{oneArticle.content}}</p>
+   </div>
+
+   <div id="map" style="width:500px;height:500px;margin:auto"></div>
+   <script>
+     function initMap() {
+       var myLatLng = {
+         lat: {{center.0}},
+         lng: {{center.1}}
+       };
+
+       // Create a map object and specify the DOM element
+       // for display.
+       var map = new google.maps.Map(document.getElementById('map'), {
+         center: myLatLng,
+         zoom: 15
+       });
+
+       // Create a marker and set its position.
+       var marker = new google.maps.Marker({
+         map: map,
+         position: myLatLng,
+         title: "{{oneArticle.title}}"
+       });
+       {% for marker in listMarker %}
+       var marker2 = new google.maps.Marker({
+         map: map,
+         position: new google.maps.LatLng({{marker.0.0}},{{marker.0.1}}),
+         title: "{{marker.1}}"
+       });
+       {% endfor %}
+     }
+
+   </script>
+   <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap"
+       async defer></script>
+
+{% endblock %}

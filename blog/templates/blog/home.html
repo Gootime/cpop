@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block content %}
+ {% if user.is_authenticated %}
+        <a href="{% url 'profil' user.id %}">Profil de {{ user.username }}</a>
+        <p><a href="{% url 'logOut' %}">Se déconnecter</a></p>
+    {% else%}
+        <a href="{% url 'logIn' %}">Connexion</a>      <a href="{% url 'signUp' %}">Inscription</a>
+    {% endif%}
+    <h1>Common's Pop Django Version</h1>
+
+    {% for article in articles %}
+    <div class="article">
+        <p><img src="../{{article.thumbnail}}"></p>
+    	<h3>{{ article.titre }}</h3>
+    	<p>{{ article.contenu|truncatewords_html:80 }}</p>
+        <p><a href="{% url 'lire' article.id %}">Lire la suite</a></p>
+    </div>
+    {% empty %}
+        <p>Aucun article.</p>
+    {% endfor %}
+    <div id="map" style="width:800px;height:500px;margin:auto"></div>
+    <script>
+      function initMap() {
+        var myLatLng = {
+          lat: 48.866667,
+          lng: 2.333333
+        };
+
+        // Create a map object and specify the DOM element
+        // for display.
+        var map = new google.maps.Map(document.getElementById('map'), {
+          center: myLatLng,
+          zoom: 10
+        });
+
+        // Create a marker and set its position.
+
+        {% for marker in listMarker %}
+
+        var marker = new google.maps.Marker({
+          map: map,
+          position: new google.maps.LatLng({{marker.0.0}},{{marker.0.1}}),
+          title: "{{marker.1}}"
+        });
+        {% endfor %}
+      }
+
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap"
+        async defer></script>
+{% endblock %}

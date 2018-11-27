@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <p><a href="{% url 'home' %}">Retour aux articles</a></p>
+    <form action="{% url 'signUp' %}" method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        {{ formAvatar.as_p }}
+        <input type="submit" value="Inscription" />
+    </form>
+
+{% endblock %}

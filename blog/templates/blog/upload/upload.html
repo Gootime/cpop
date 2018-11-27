@@ -1,0 +1,205 @@
+{% extends "blog/upload/base.html" %}
+{% block content %}
+<div class='row'>
+    <div class='col-6 offset-3'>
+        <div class='item-loading-queue'>
+
+        </div>
+        <form method="post" id="form" class='cfeproj-upload-form' enctype="multipart/form-data" action="/blog/post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <input type="hidden" name="id_file" id="id_file">
+            <input class='cfeproj-upload-file form-control' type='file' accept='audio/*,video/*,image/*'/>
+
+        </form>
+        <button id="send">Send</button>
+    </div>
+</div>
+{% endblock content %}
+
+
+{%block javascript%}
+<script>
+$(document).ready(function(){
+
+    // setup session cookie data. This is Django-related
+    function getCookie(name) {
+        var cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = jQuery.trim(cookies[i]);
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    var csrftoken = getCookie('csrftoken');
+
+    function csrfSafeMethod(method) {
+        // these HTTP methods do not require CSRF protection
+        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+    }
+
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                xhr.setRequestHeader("X-CSRFToken", csrftoken);
+            }
+        }
+    });
+    // end session cookie data setup.
+
+
+// auto-upload on file input change.
+$("#send").click(function startSubmit(){
+    var selectedFile = $(".cfeproj-upload-file").prop('files')[0];
+    var myFile = verifyFileIsImageMovieAudio(selectedFile)
+    if (myFile){
+        uploadFile(myFile)
+
+    } else {
+        alert("Some files are invalid uploads.")
+    }
+})
+
+
+
+function verifyFileIsImageMovieAudio(file){
+    // verifies the file extension is one we support.
+    var extension = file.name.split('.').pop().toLowerCase(); //file.substr( (file.lastIndexOf('.') +1) );
+    switch(extension) {
+        case 'jpg':
+        case 'png':
+        case 'gif':
+        case 'jpeg':
+            return file
+        case 'mov':
+        case 'mp4':
+        case 'mpeg4':
+        case 'avi':
+            return file
+        case 'mp3':
+            return file
+        default:
+            notAllowedFiles.push(file)
+            return null
+    }
+};
+
+function constructFormPolicyData(policyData, fileItem) {
+   var contentType = fileItem.type != '' ? fileItem.type : 'application/octet-stream'
+    var url = policyData.url
+    var filename = policyData.filename
+    var repsonseUser = policyData.user
+    var keyPath = policyData.file_bucket_path
+    var fd = new FormData()
+    fd.append('key', keyPath + filename);
+    fd.append('acl','private');
+    fd.append('Content-Type', contentType);
+    fd.append("AWSAccessKeyId", policyData.key)
+    fd.append('Policy', policyData.policy);
+    fd.append('filename', filename);
+    fd.append('Signature', policyData.signature);
+    fd.append('file', fileItem);
+    return fd
+
+}
+
+function fileUploadComplete(fileItem, policyData){
+    data = {
+        uploaded: true,
+        fileSize: fileItem.size,
+        file: policyData.file_id,
+
+    }
+    $.ajax({
+        method:"POST",
+        data: data,
+        url: "api/files/complete/",
+        success: function(data){
+            displayItems(fileItemList)
+        },
+        error: function(jqXHR, textStatus, errorThrown){
+            alert("An error occured, please refresh the page.")
+        }
+    })
+}
+
+function displayItems(filexhr){
+    var itemList = $('.item-loading-queue')
+    itemList.html("")
+    var html_ = "<div class=\"percent\">" + filexhr.progress + "%</div><div class=\"progress\">" +
+      "<div class=\"progress-bar\" role=\"progressbar\" style='width:" + filexhr.progress + "%' aria-valuenow='" + filexhr.progress + "' aria-valuemin=\"0\" aria-valuemax=\"100\"></div></div>"
+    itemList.append("<div>" + filexhr.name + "<a href='#' class='srvup-item-upload float-right'>X</a> <br/>" + html_ + "</div><hr/>")
+}
+
+
+function uploadFile(fileItem){
+        var policyData;
+        var newLoadingItem;
+        // get AWS upload policy for each file uploaded through the POST method
+        // Remember we're creating an instance in the backend so using POST is
+        // needed.
+        $.ajax({
+            method:"POST",
+            data: {
+                filename: fileItem.name
+            },
+            url: "api/files/policy/",
+            success: function(data){
+                    policyData = data
+            },
+            error: function(data){
+                alert("An error occured, please try again later")
+                console.log(data)
+            }
+        }).done(function(){
+            // construct the needed data using the policy for AWS
+            var fd = constructFormPolicyData(policyData, fileItem)
+
+            // use XML http Request to Send to AWS.
+            var xhr = new XMLHttpRequest()
+
+            // construct callback for when uploading starts
+            xhr.upload.onloadstart = function(event){
+
+            newLoadingItem = {
+                file: fileItem,
+                id: policyData.file_id
+            };
+
+            fileItem.xhr = xhr;
+
+            $("#id_file").val(policyData.file_id)
+
+            };
+
+            // Monitor upload progress and attach to fileItem.
+            xhr.upload.addEventListener("progress", function(event){
+                if (event.lengthComputable) {
+                    fileItem.progress = Math.round(event.loaded / event.total * 100)
+                    displayItems(fileItem)
+                }
+            })
+
+            xhr.upload.addEventListener("load", function(event){
+                console.log("Complete")
+                // handle FileItem Upload being complete.
+                fileUploadComplete(fileItem, policyData)
+                $('#form').submit()
+            })
+
+            xhr.open('POST', policyData.url , true);
+            xhr.send(fd);
+        })
+}
+
+})
+</script>
+{% endblock %}

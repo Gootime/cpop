@@ -1,0 +1,25 @@
+
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+ {% if error %}
+        <p><strong>Utilisateur inconnu ou mauvais de mot de passe.</strong></p>
+    {% endif %}
+    {% if user.is_authenticated %}
+        Vous êtes connecté, {{ user.username }} !
+    <p><a href="{% url 'profil' user.id %}">Profil de {{ user.username }}</a></p>
+    <p><a href="{%url 'home'%}">Revenir aux article</a></p>
+    <p><a href="{% url 'logOut' %}">Se déconnecter</a></p>
+
+    {% else %}
+        <form action="{% url 'logIn' %}" method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <input type="submit" value="Connexion">
+        </form>
+         <p><button><a href="{% url 'signUp' %}">Inscription</a></button></p>
+    {%endif%}
+
+{% endblock %}

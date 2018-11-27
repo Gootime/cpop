@@ -1,0 +1,14 @@
+
+
+
+{% extends 'base.html' %}
+
+{%  block content %}
+ <p>Pseudo : {{ user.username}}</p>
+    <p>Email : {{ user.email}}</p>
+    <p>Prenom : {{ user.first_name}}</p>
+    <p>Nom de Famille : {{ user.last_name}}</p>
+
+    <p><a href="{%url 'home'%}">Revenir aux article</a></p>
+    <p><a href="{% url 'logOut' %}">Se déconnecter</a></p>
+{% endblock %}
